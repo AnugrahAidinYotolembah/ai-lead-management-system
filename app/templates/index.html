@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wiz CRM | AI-Assisted Lead Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">W</div>
+        <div>
+          <div class="brand-name">Wiz Lead AI</div>
+          <div class="brand-tag">CRM System</div>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item active" onclick="switchView('leads-view', this)">
+          <span>📊</span> Overview & Leads
+        </li>
+        <li class="nav-item" onclick="switchView('dedupe-view', this)">
+          <span>🔍</span> AI Deduplication
+        </li>
+        <li class="nav-item" onclick="switchView('source-view', this)">
+          <span>⚡</span> Source Extractor AI
+        </li>
+        <li class="nav-item" onclick="switchView('ingest-view', this)">
+          <span>📥</span> Webhook Ingest Test
+        </li>
+        <li class="nav-item" onclick="switchView('profile-view', this)">
+          <span>👤</span> Candidate Profile
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <div>Candidate: <strong style="color:var(--text-primary);">Anugrah Aidin Yotolembah</strong></div>
+        <div style="margin-top: 2px;">Role: <span style="color:#a78bfa;">AI Builder (Mid-Level)</span></div>
+        <div style="margin-top: 6px; font-size: 0.75rem; color:#10b981;">● OpenRouter LLaMA 3.3 Active</div>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+      <header class="top-navbar">
+        <div class="page-title">
+          <span id="header-title">Mini Lead Management System</span>
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <a href="/docs" target="_blank" class="btn btn-secondary">API Docs (Swagger)</a>
+          <button class="btn btn-primary" onclick="triggerExport()">Export CSV</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        
+        <!-- VIEW 1: LEADS & OVERVIEW -->
+        <div id="leads-view" class="view-section">
+          <!-- Metric Cards -->
+          <div class="metrics-grid">
+            <div class="card">
+              <div class="metric-header">
+                <span class="metric-title">Total Leads</span>
+                <span>👥</span>
+              </div>
+              <div class="metric-value" id="metric-total">-</div>
+              <div class="metric-sub">Normalized CRM Database</div>
+            </div>
+            <div class="card">
+              <div class="metric-header">
+                <span class="metric-title">Qualified / Won</span>
+                <span>🏆</span>
+              </div>
+              <div class="metric-value" id="metric-qualified">-</div>
+              <div class="metric-sub">High Intent Opportunities</div>
+            </div>
+            <div class="card">
+              <div class="metric-header">
+                <span class="metric-title">Top Acquisition Channel</span>
+                <span>🚀</span>
+              </div>
+              <div class="metric-value" id="metric-top-channel" style="font-size: 1.5rem;">-</div>
+              <div class="metric-sub" id="metric-channel-sub">AI Extracted from Notes</div>
+            </div>
+          </div>
+
+          <!-- Breakdown Charts -->
+          <div class="breakdown-row" style="margin-top: 20px;">
+            <div class="card">
+              <h3>Leads by Status</h3>
+              <div class="list-breakdown" id="status-breakdown">
+                <div style="color:var(--text-muted);">Loading metrics...</div>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Leads by AI Source Channel</h3>
+              <div class="list-breakdown" id="channel-breakdown">
+                <div style="color:var(--text-muted);">Loading metrics...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leads Table Card -->
+          <div class="card" style="margin-top: 20px;">
+            <div class="table-header-controls">
+              <div class="filter-group">
+                <input type="text" id="filter-search" class="input-control" placeholder="Search name, company, email..." style="width: 240px;">
+                <select id="filter-status" class="select-control">
+                  <option value="">All Statuses</option>
+                  <option value="New">New</option>
+                  <option value="Qualified">Qualified</option>
+                  <option value="Connected">Connected</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Opportunity">Opportunity</option>
+                  <option value="Closed Won">Closed Won</option>
+                  <option value="Closed Lost">Closed Lost</option>
+                </select>
+                <input type="text" id="filter-country" class="input-control" placeholder="Country" style="width: 130px;">
+                <input type="text" id="filter-owner" class="input-control" placeholder="Owner" style="width: 140px;">
+                <button class="btn btn-secondary" onclick="applyFilters()">Filter</button>
+                <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+              </div>
+              <div style="color: var(--text-secondary); font-size: 0.85rem;" id="table-count-label">
+                Showing top 50 leads
+              </div>
+            </div>
+
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Lead Name</th>
+                    <th>Company</th>
+                    <th>Email / Phone</th>
+                    <th>Status</th>
+                    <th>Source Channel (AI)</th>
+                    <th>Owner</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="leads-table-body">
+                  <tr>
+                    <td colspan="7" style="text-align:center; padding: 40px; color: var(--text-muted);">Loading leads...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 2: AI DEDUPLICATION -->
+        <div id="dedupe-view" class="view-section" style="display:none;">
+          <div class="card">
+            <h2>AI-Assisted Lead Deduplication</h2>
+            <p style="color:var(--text-secondary); margin: 8px 0 20px 0; font-size: 0.9rem;">
+              Uses scalable candidate generation ($O(N)$ blocking by normalized phone, domain, and tokens) followed by multi-attribute AI scoring to flag duplicate entries without quadratic overhead.
+            </p>
+            <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px;">
+              <label style="font-size:0.875rem;">Min Confidence:</label>
+              <select id="dedupe-threshold" class="select-control">
+                <option value="0.80">High (>= 80%)</option>
+                <option value="0.65" selected>Standard (>= 65%)</option>
+                <option value="0.50">Aggressive (>= 50%)</option>
+              </select>
+              <button class="btn btn-primary" onclick="runDeduplication()">Scan for Duplicates</button>
+              <span id="dedupe-spinner" style="display:none; color:var(--primary);">Scanning ~2,000 records...</span>
+            </div>
+
+            <div id="dedupe-results-summary" style="margin-bottom: 16px; font-weight: 600;"></div>
+            <div id="dedupe-list">
+              <div style="color:var(--text-muted); padding: 20px 0;">Click 'Scan for Duplicates' to initiate AI deduplication.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 3: AI SOURCE EXTRACTOR -->
+        <div id="source-view" class="view-section" style="display:none;">
+          <div class="card" style="max-width: 800px;">
+            <h2>AI Source Extraction Sandbox</h2>
+            <p style="color:var(--text-secondary); margin: 8px 0 20px 0; font-size: 0.9rem;">
+              Transforms raw, unstructured sales notes or CRM logs into standardized marketing channels (`Website`, `Event`, `LinkedIn`, `Organic Search`, `Referral`, `Manual/Sales`, `Other`).
+            </p>
+            <div class="form-field" style="margin-bottom: 16px;">
+              <label>Sample Unstructured CRM Note:</label>
+              <textarea id="sample-note-input" class="input-control" rows="4" style="width:100%;">Met him at the SFF booth, scanned our QR code. Interested in enterprise tier.</textarea>
+            </div>
+            <div class="form-field" style="margin-bottom: 20px;">
+              <label>Optional Original Source tag:</label>
+              <input type="text" id="sample-orig-source" class="input-control" placeholder="Offline Sources" value="Offline Sources">
+            </div>
+            <div style="display:flex; gap:12px; margin-bottom: 24px;">
+              <button class="btn btn-primary" onclick="testExtractSource()">Extract Structured Source</button>
+              <button class="btn btn-secondary" onclick="fillSampleNote(1)">Sample: Referral</button>
+              <button class="btn btn-secondary" onclick="fillSampleNote(2)">Sample: Google Search</button>
+              <button class="btn btn-secondary" onclick="fillSampleNote(3)">Sample: LinkedIn InMail</button>
+            </div>
+
+            <div id="source-extract-result" style="display:none; background: rgba(0,0,0,0.3); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <h4 style="margin-bottom: 12px; color: var(--primary);">Extracted Output:</h4>
+              <pre id="source-extract-json" style="font-family: monospace; font-size: 0.9rem; color: #34d399;"></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 4: INGEST SIMULATOR -->
+        <div id="ingest-view" class="view-section" style="display:none;">
+          <div class="card" style="max-width: 750px;">
+            <h2>Website Form Ingestion Simulator (`POST /leads/ingest`)</h2>
+            <p style="color:var(--text-secondary); margin: 8px 0 20px 0; font-size: 0.9rem;">
+              Simulates a submission from `website_form_submissions.json`. Automatically checks for existing leads by normalized email/phone, either updating the lead or creating a new record.
+            </p>
+            <div class="form-field" style="margin-bottom: 14px;">
+              <label>Full Name:</label>
+              <input type="text" id="ingest-name" class="input-control" value="Karim Toure">
+            </div>
+            <div class="form-field" style="margin-bottom: 14px;">
+              <label>Email Address:</label>
+              <input type="email" id="ingest-email" class="input-control" value="k.toure@liutrading.biz">
+            </div>
+            <div class="form-field" style="margin-bottom: 14px;">
+              <label>Phone Number:</label>
+              <input type="text" id="ingest-phone" class="input-control" value="+61 462 210 338">
+            </div>
+            <div class="form-field" style="margin-bottom: 14px;">
+              <label>Company:</label>
+              <input type="text" id="ingest-company" class="input-control" value="Liu Trading Studio">
+            </div>
+            <div class="form-field" style="margin-bottom: 14px;">
+              <label>Country:</label>
+              <input type="text" id="ingest-country" class="input-control" value="Australia">
+            </div>
+            <div class="form-field" style="margin-bottom: 20px;">
+              <label>Message / Notes:</label>
+              <textarea id="ingest-message" class="input-control" rows="3">Following up after our earlier conversation, please send pricing.</textarea>
+            </div>
+            <button class="btn btn-primary" onclick="submitIngest()">Submit Form Ingest</button>
+
+            <div id="ingest-result" style="display:none; margin-top: 24px; padding: 20px; border-radius: var(--radius-md); background: rgba(0,0,0,0.35); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+              <div id="ingest-status-badge" style="font-weight: 600; margin-bottom: 12px; font-size: 0.95rem;"></div>
+              <div style="background: #0d1117; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 16px; overflow-x: auto; max-height: 380px; overflow-y: auto;">
+                <pre id="ingest-result-json" style="font-family: 'JetBrains Mono', Consolas, Monaco, monospace; font-size: 0.85rem; color: #34d399; margin: 0; line-height: 1.6; white-space: pre-wrap; word-break: break-word;"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 5: CANDIDATE PROFILE -->
+        <div id="profile-view" class="view-section" style="display:none;">
+          <div class="card" style="max-width: 850px;">
+            <div style="display:flex; gap:20px; align-items:center; margin-bottom:24px; border-bottom:1px solid var(--border-color); padding-bottom:20px;">
+              <div style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, #6366f1, #a855f7); display:flex; align-items:center; justify-content:center; font-size:1.8rem; font-weight:700; color:#fff; box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);">
+                AY
+              </div>
+              <div>
+                <h2 style="font-size:1.6rem; font-weight:700; margin-bottom:4px;">Anugrah Aidin Yotolembah</h2>
+                <div style="color:var(--text-secondary); font-size:0.95rem;">
+                  <span style="color:#a78bfa; font-weight:600;">Candidate for AI Builder (Mid-Level)</span>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:8px; font-size:0.85rem; color:var(--text-muted);">
+                  <span>📧 <a href="mailto:didiyotolembah19@gmail.com" style="color:var(--text-secondary); text-decoration:none;">didiyotolembah19@gmail.com</a></span>
+                  <span>🔗 <a href="https://www.linkedin.com/in/anugrahaidinyotolembah191201" target="_blank" style="color:#38bdf8; text-decoration:none;">LinkedIn Profile</a></span>
+                  <span>📍 Indonesia</span>
+                  <span style="color:#10b981; font-weight:600;">● Available Immediately</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:24px;">
+              <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Assignment Title</div>
+                <div style="font-size:1.05rem; font-weight:600; margin-top:4px;">AI Mini Lead Management</div>
+                <div style="font-size:0.8rem; color:#10b981; margin-top:2px;">100% Requirements Completed</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Active LLM Provider</div>
+                <div style="font-size:1.05rem; font-weight:600; margin-top:4px; color:#38bdf8;">OpenRouter (LLaMA 3.3 70B)</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;">Free-Tier ($0 API cost) + Heuristic Fallback</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:600;">Automated Test Suite</div>
+                <div style="font-size:1.05rem; font-weight:600; margin-top:4px; color:#4ade80;">17 / 17 Passed (100%)</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;">Pytest unit & edge-case coverage</div>
+              </div>
+            </div>
+
+            <h3 style="margin-bottom:12px; font-size:1.1rem;">Engineering Highlights & Design Decisions</h3>
+            <ul style="color:var(--text-secondary); line-height:1.7; padding-left:20px; font-size:0.9rem; margin-bottom:24px;">
+              <li style="margin-bottom:10px;">
+                <strong style="color:var(--text-primary);">Messy Data Normalization:</strong><br>
+                Built an automated data-cleaning pipeline to process 2,049 rows of raw CRM exports, including handling missing or inconsistent names, normalizing phone numbers into standardized digit-based keys, mapping different status values into 7 canonical states, and parsing various date formats.
+              </li>
+              <li style="margin-bottom:10px;">
+                <strong style="color:var(--text-primary);">Scalable Two-Stage AI Deduplication:</strong><br>
+                Designed an efficient deduplication process using Inverted Index Blocking instead of brute-force pairwise comparison. This reduces the computational complexity from O(N²) to approximately O(N), allowing around 2,000 records to be scanned in under 0.5 seconds.
+              </li>
+              <li style="margin-bottom:10px;">
+                <strong style="color:var(--text-primary);">AI-Based Source Extraction (NLP):</strong><br>
+                Developed an NLP pipeline to extract structured marketing channels and source details from unstructured sales notes. The system uses LLaMA 3.3 70B via OpenRouter, with a local regex-based rule engine as a fallback to maintain reliability when the AI service is unavailable.
+              </li>
+              <li style="margin-bottom:10px;">
+                <strong style="color:var(--text-primary);">Production-Ready REST API & Dynamic Export:</strong><br>
+                Implemented a complete REST API with GET, PATCH, and POST /ingest endpoints, along with dynamic CSV exports based on user-defined filters. The API also includes automatically generated OpenAPI/Swagger documentation for easier integration and testing.
+              </li>
+            </ul>
+
+            <div style="display:flex; flex-wrap:wrap; gap:12px;">
+              <a href="https://www.linkedin.com/in/anugrahaidinyotolembah191201" target="_blank" class="btn btn-primary" style="background:#0a66c2; border-color:#0a66c2;">Visit LinkedIn Profile</a>
+              <a href="mailto:didiyotolembah19@gmail.com" class="btn btn-secondary">Email Candidate</a>
+              <a href="/docs" target="_blank" class="btn btn-secondary">Open Swagger API Docs</a>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Lead Edit/Detail Modal -->
+  <div class="modal-overlay" id="lead-modal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3 id="modal-title">Lead Details</h3>
+        <button class="btn btn-secondary" onclick="closeModal()" style="padding: 4px 10px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modal-lead-id">
+        <div class="form-field">
+          <label>Name & Company:</label>
+          <div id="modal-lead-header" style="font-weight: 600; font-size: 1.05rem;"></div>
+        </div>
+        <div class="form-field">
+          <label>Email & Phone:</label>
+          <div id="modal-lead-contact" style="color: var(--text-secondary); font-size: 0.9rem;"></div>
+        </div>
+        <div class="form-field">
+          <label>Lead Status:</label>
+          <select id="modal-lead-status" class="select-control">
+            <option value="New">New</option>
+            <option value="Qualified">Qualified</option>
+            <option value="Connected">Connected</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Opportunity">Opportunity</option>
+            <option value="Closed Won">Closed Won</option>
+            <option value="Closed Lost">Closed Lost</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Contact Owner:</label>
+          <input type="text" id="modal-lead-owner" class="input-control">
+        </div>
+        <div class="form-field">
+          <label>Notes (AI channel extraction automatically re-runs):</label>
+          <textarea id="modal-lead-notes" class="input-control" rows="4"></textarea>
+        </div>
+        <div class="form-field">
+          <label>Extracted Source Channel & Detail:</label>
+          <div id="modal-lead-source" style="font-size: 0.85rem; color: #a78bfa;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveLeadChanges()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
