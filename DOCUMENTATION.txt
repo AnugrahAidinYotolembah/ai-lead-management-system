@@ -1,0 +1,419 @@
+================================================================================
+AI-ASSISTED MINI LEAD MANAGEMENT SYSTEM
+WIZ.AI Take-Home Assignment for AI Builder (Mid-Level)
+================================================================================
+
+A lightweight, production-oriented CRM prototype built with Python, FastAPI, 
+SQLite, and AI/LLM-assisted workflows.
+
+Designed specifically to tackle messy, real-world CRM data, including inconsistent 
+names, mixed date formats, phone number variations, unstructured sales notes, and 
+duplicate contacts.
+
+--------------------------------------------------------------------------------
+1. CANDIDATE INFORMATION
+--------------------------------------------------------------------------------
+- Name              : Anugrah Aidin Yotolembah
+- Role              : Candidate for AI Builder (Mid-Level)
+- Email             : didiyotolembah19@gmail.com
+- LinkedIn          : https://www.linkedin.com/in/anugrahaidinyotolembah191201
+- Assignment Status : 100% Core & Bonus Requirements Completed
+
+--------------------------------------------------------------------------------
+2. LIVE DEMO & PRODUCTION ACCESS
+--------------------------------------------------------------------------------
+URL: https://ai-lead-management-system.vercel.app/
+
+The live dashboard provides an interactive interface for exploring the CRM workflow:
+  * Lead management, searching, and multi-attribute filtering
+  * CRM dashboard and KPI visualization
+  * In-place lead updates (status, owner, notes)
+  * AI-assisted duplicate candidate detection with confidence scoring
+  * AI-assisted source extraction sandbox
+  * Dynamic CSV export
+
+Note: The live deployment may use serverless environment configurations. For the 
+complete local API, SQLite database, and full testing capabilities, follow the 
+step-by-step local setup instructions in Section 7.
+
+--------------------------------------------------------------------------------
+3. TECHNOLOGY STACK & ARCHITECTURAL DECISIONS
+--------------------------------------------------------------------------------
+* Backend Framework:
+  FastAPI (Python 3.10+)
+  - High-performance asynchronous framework (ASGI).
+  - Automatic OpenAPI / Swagger UI documentation generation.
+  - Native type-hinting validation.
+
+* Data Validation:
+  Pydantic v2
+  - Fast parsing and serialization (Rust-backed core).
+  - Strict input/output schema contract enforcement.
+
+* Database & ORM:
+  SQLite + SQLAlchemy 2.0
+  - Zero-configuration single-file relational database for clean local execution.
+  - Database access abstracted via ORM, enabling simple migration to PostgreSQL.
+
+* AI / LLM Integration:
+  OpenRouter API (meta-llama/llama-3.3-70b-instruct:free)
+  - Connects to state-of-the-art open-source LLM reasoning at $0 credit cost.
+  - Configurable support for OpenAI, Gemini, or local models.
+
+* Fallback AI Engine:
+  Deterministic Regex Rule Engine
+  - Local rule-based parser that executes when offline or if API quotas are exceeded.
+  - Ensures sub-millisecond responses and 100% service availability.
+
+* Frontend / Dashboard:
+  HTML5 + Modern CSS + Vanilla JavaScript (Single Page Application)
+  - Responsive, dark-mode glassmorphic interface.
+  - Served directly by FastAPI; no Node.js or NPM build step required.
+
+* Automated Testing:
+  Pytest + TestClient (HTTPX)
+  - 17 unit and integration tests covering CRUD, deduplication, search, and NLP.
+
+--------------------------------------------------------------------------------
+4. PROJECT STRUCTURE
+--------------------------------------------------------------------------------
+lead_management_system/
+│
+├── app/
+│   ├── config.py              # Application settings, paths, and LLM configuration
+│   ├── database.py            # SQLite engine, connection pool, and session generator
+│   ├── models.py              # SQLAlchemy database ORM model (Lead table)
+│   ├── schemas.py             # Pydantic request, response, and validation schemas
+│   │
+│   ├── services/
+│   │   ├── normalizer.py      # Raw data cleaning (names, dates, phones, status)
+│   │   ├── dedupe_service.py  # Two-stage scalable AI deduplication engine
+│   │   ├── source_extractor.py# LLM + Regex source channel and detail extractor
+│   │   └── lead_service.py    # Business logic: CRUD, filtering, CSV export, ingest
+│   │
+│   ├── static/
+│   │   ├── css/
+│   │   │   └── style.css      # Dark-mode glassmorphic styling
+│   │   └── js/
+│   │       └── app.js         # Reactive SPA frontend controller
+│   │
+│   ├── templates/
+│   │   └── index.html         # Jinja2 template rendering dashboard and candidate profile
+│   │
+│   └── main.py                # FastAPI entrypoint, routing, CORS, and static mounts
+│
+├── data/
+│   ├── leads_seed.csv         # Raw seed CRM dataset (2,049 records)
+│   └── website_form_submissions.json # Sample webhook submissions payload
+│
+├── scripts/
+│   ├── import_seed.py         # Batch ingestion CLI to parse, clean, and seed database
+│   └── run_dedupe.py          # Offline CLI deduplication scanner
+│
+├── tests/
+│   ├── test_leads_api.py      # REST API tests (CRUD, filtering, search, export, ingest)
+│   ├── test_dedupe.py         # Deduplication unit tests (typos, company suffix, etc.)
+│   └── test_source_extract.py # Source extraction tests (Events, Referrals, Search, etc.)
+│
+├── api/
+│   └── index.py               # Vercel serverless entrypoint handler
+│
+├── vercel.json                # Vercel serverless deployment routing
+├── requirements.txt           # Python package dependencies
+├── .env.example               # Template environment configuration
+├── .gitignore                 # Git ignore file (excludes secrets and cache)
+├── README.md                  # Markdown documentation
+└── DOCUMENTATION.txt          # This complete plain-text guide
+
+--------------------------------------------------------------------------------
+5. DETAILED FILE-BY-FILE RESPONSIBILITIES
+--------------------------------------------------------------------------------
+
+[app/config.py]
+- Loads environment variables from .env using python-dotenv.
+- Defines standard CRM lifecycle statuses:
+  New, Qualified, Connected, Contacted, Opportunity, Closed Won, Closed Lost.
+- Defines canonical marketing channels:
+  Website, Event, LinkedIn, Organic Search, Referral, Manual/Sales, Other.
+- Manages LLM configuration (OpenRouter API key, model selection, timeouts).
+
+[app/database.py]
+- Initializes the SQLAlchemy engine for SQLite with multi-threading compatibility 
+  (check_same_thread=False).
+- Provides the SessionLocal factory and the get_db() dependency for route handlers.
+
+[app/models.py]
+- Defines the SQLAlchemy Lead ORM model mapped to the "leads" table.
+- Standard fields: first_name, last_name, full_name, email, job_title, company_name, 
+  country, city, lead_status, lifecycle_stage, notes, create_date, last_modified_date.
+- Specialized fields:
+  * phone_normalized : Digits-only phone format used as a high-speed blocking index.
+  * source_channel   : Canonical marketing channel identified by AI.
+  * source_detail    : Granular attribution extracted from sales notes.
+
+[app/schemas.py]
+- Pydantic models for request and response validation:
+  * LeadResponse        : Serialized lead profile.
+  * LeadUpdate          : Allowed patch payload (status, owner, notes).
+  * FormSubmissionIngest: Inbound web form submission format.
+  * DedupeCandidateItem : Pairwise match details, confidence score, and explanation.
+  * DedupeResponse      : Aggregated duplicate candidates list.
+  * SourceExtractRequest & SourceExtractResponse: Contracts for AI note analysis.
+  * DashboardSummary    : KPI aggregations by status, channel, owner, and country.
+
+[app/services/normalizer.py]
+- Cleans and standardizes raw, inconsistent CRM export data:
+  * normalize_name()  : Splits or combines First/Last Name and Full Name.
+  * normalize_status(): Maps case variations (e.g., " New", "qualified", "CONNECTED") 
+                        to canonical CRM statuses.
+  * normalize_phone() : Cleans international strings into standardized digits.
+  * normalize_date()  : Robust multi-pattern date parser supporting ISO-8601, 
+                        YYYY-MM-DD, and M/D/YYYY formats.
+
+[app/services/dedupe_service.py]
+- Implements scalable two-stage deduplication:
+  1. Stage 1 (Blocking / Candidate Generation - O(N)):
+     Partitions ~2,000 leads into high-probability buckets using:
+     - Normalized phone digits (last 7 digits)
+     - Email domain + first letter of first name
+     - Clean email handle/local-part
+     - Clean company token + last letter of last name
+  2. Stage 2 (Multi-Feature Scoring):
+     Scores candidates within surviving blocks using:
+     - Jaro-Winkler / SequenceMatcher string similarity on names
+     - Email domain match and local-part distance
+     - Phone digit equality
+     - Company legal suffix normalization (strips Pte Ltd, Inc, GmbH, etc.)
+  3. Outputs confidence score (0.0 to 1.0), rank (HIGH/MEDIUM/LOW), and human-readable 
+     explanations. Avoids quadratic O(N^2) comparison overhead.
+
+[app/services/source_extractor.py]
+- Hybrid NLP Information Extraction pipeline:
+  1. Sends unstructured notes to OpenRouter API (meta-llama/llama-3.3-70b-instruct:free).
+  2. Extracts structured JSON: {"channel": "<Channel>", "detail": "<Detail>"}.
+  3. Seamlessly falls back to local regex heuristic rules if offline or if API key is 
+     missing, ensuring zero downtime.
+
+[app/services/lead_service.py]
+- Encapsulates database business logic:
+  * get_leads()          : Filtering (status, owner, country), search (q), pagination.
+  * update_lead()        : Modifies lead and automatically triggers source re-extraction 
+                           if notes are edited.
+  * export_leads_csv()   : Generates dynamic CSV export matching active filter criteria.
+  * ingest_submission()  : Idempotent web form ingest; checks by normalized email/phone, 
+                           updates existing record or creates a new lead.
+  * get_dashboard_metrics(): Calculates KPI aggregations for the dashboard.
+
+[app/main.py]
+- FastAPI application entrypoint.
+- Registers CORS middleware, mounts static directories, and configures Jinja2 templates.
+- Exposes REST API endpoints:
+  * GET   /              -> Serves interactive HTML dashboard
+  * GET   /dashboard-ui  -> Alternative dashboard route
+  * GET   /leads         -> Paginated lead list with filters
+  * GET   /leads/{id}    -> Single lead details
+  * PATCH /leads/{id}    -> Partial lead update
+  * GET   /leads/export  -> Filter-aware dynamic CSV export
+  * POST  /leads/ingest  -> Web form submission ingestion
+  * POST  /leads/dedupe-candidates -> AI deduplication candidate analysis
+  * POST  /leads/extract-source    -> AI sales notes source extraction
+  * GET   /dashboard     -> Aggregated CRM analytics JSON
+
+--------------------------------------------------------------------------------
+6. END-TO-END SYSTEM WORKFLOW: HOW IT WORKS
+--------------------------------------------------------------------------------
+
+           ┌────────────────────────────────┐
+           │ Raw CSV Export (leads_seed.csv)│
+           └───────────────┬────────────────┘
+                           │
+                           ▼
+           ┌────────────────────────────────┐
+           │   Normalizer & Cleaner Script  │
+           │        (import_seed.py)        │
+           └───────────────┬────────────────┘
+                           │
+                           ▼
+           ┌────────────────────────────────┐
+           │     SQLite Database Store      │
+           │          (leads.db)            │
+           └───────────────┬────────────────┘
+                           │
+         ┌─────────────────┴─────────────────┐
+         ▼                                   ▼
+┌──────────────────┐               ┌──────────────────┐
+│ REST API & UI    │               │ AI Deduplication │
+│ • Filter/Search  │               │ • Blocking O(N)  │
+│ • PATCH Updates  │               │ • Pair Scoring   │
+│ • Form Ingest    │               │ • Rank & Reason  │
+│ • CSV Export     │               └──────────────────┘
+└────────┬─────────┘
+         │
+         ▼
+┌───────────────────────────────────────────┐
+│ AI Source Extractor                       │
+│ • Primary : OpenRouter (LLaMA 3.3 70B)    │
+│ • Fallback: Local Regex Rule Engine       │
+└───────────────────────────────────────────┘
+
+Workflow Execution Steps:
+1. Ingestion:
+   The batch script imports 2,049 records from leads_seed.csv. Raw values are cleaned 
+   (names split, phone numbers normalized to digits, status mapped, dates standardized). 
+   Sales notes are analyzed by the AI Source Extractor to assign canonical marketing 
+   channels. Records are saved to SQLite in batches of 500.
+
+2. Lead Management:
+   Users query leads via GET /leads or the web interface. Full-text search (q) queries 
+   name, email, and company concurrently. Editing a lead via PATCH /leads/{id} 
+   automatically re-invokes the AI source extraction engine if notes are modified.
+
+3. Web Form Ingest:
+   Incoming payloads via POST /leads/ingest are validated. The engine checks for an 
+   existing lead by normalized email or phone. If found, the contact information is 
+   updated; if not, a new record is created.
+
+4. Deduplication:
+   Instead of comparing 2,049 records against each other (~2.1 million pairs), the 
+   algorithm groups records by blocking keys. Only records within the same block are 
+   scored. Scans complete across ~2,000 records in under 0.5 seconds.
+
+5. Source Extraction:
+   Unstructured text (e.g., "Met him at the SFF booth, scanned our QR code") is parsed by 
+   LLaMA 3.3 70B into structured JSON:
+   {"channel": "Event", "detail": "Singapore FinTech Festival — Booth QR Code"}.
+
+--------------------------------------------------------------------------------
+7. STEP-BY-STEP GUIDE: HOW TO RUN THE PROJECT LOCALLY
+--------------------------------------------------------------------------------
+
+Follow these exact steps to run the application on your computer:
+
+STEP 1: Check System Requirements
+  - Operating System: macOS, Linux, or Windows (WSL recommended)
+  - Python 3.10 or newer installed (Verify with: python3 --version)
+  - Git installed
+
+STEP 2: Clone Repository & Enter Directory
+  Open your terminal and run:
+  $ git clone <YOUR_GITHUB_REPOSITORY_URL>
+  $ cd lead_management_system
+
+STEP 3: Set Up a Python Virtual Environment (Recommended)
+  $ python3 -m venv venv
+  $ source venv/bin/activate       # On Windows use: venv\Scripts\activate
+
+STEP 4: Install Dependencies
+  $ pip install -r requirements.txt
+
+STEP 5: Configure Environment Variables
+  Copy the template file to create your active .env file:
+  $ cp .env.example .env
+
+  Ensure your .env file contains:
+  ---------------------------------------------------------------------------
+  DATABASE_PATH=leads.db
+  OPENROUTER_API_KEY=your_openrouter_api_key_here
+  OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free
+  LLM_PROVIDER=openrouter
+  ---------------------------------------------------------------------------
+  Note: If you do not have an OpenRouter API key, the system automatically runs 
+  using the built-in local heuristic rule engine without errors.
+
+STEP 6: Seed the Database
+  Load and normalize the 2,049 seed CRM leads into SQLite:
+  $ python3 scripts/import_seed.py
+
+  Expected output:
+  "Successfully imported and normalized 2049 leads into SQLite!"
+
+STEP 7: Start the FastAPI Server
+  Run Uvicorn to start the local web server:
+  $ uvicorn app.main:app --reload --port 8000
+
+STEP 8: Access the Application
+  Open your web browser:
+  * Web Dashboard  : http://127.0.0.1:8000/
+  * Interactive API: http://127.0.0.1:8000/docs (Swagger UI)
+  * Alternative Doc: http://127.0.0.1:8000/redoc
+
+--------------------------------------------------------------------------------
+8. STEP-BY-STEP GUIDE: HOW TO RUN AUTOMATED TESTS
+--------------------------------------------------------------------------------
+
+To run the complete automated test suite:
+
+  $ PYTHONPATH=. pytest tests -v
+
+Test Suite Summary (17 Tests, 100% Passing):
+* tests/test_leads_api.py:
+  - test_list_leads                      : Validates pagination and response structure.
+  - test_filter_leads_by_status          : Verifies exact status filtering.
+  - test_search_leads                    : Tests multi-field text search (q).
+  - test_get_single_lead                 : Verifies single record retrieval by ID.
+  - test_patch_lead                      : Validates updates and automatic AI source re-extraction.
+  - test_export_leads_csv                : Verifies filter-aware CSV export.
+  - test_ingest_new_lead_and_update_existing: Tests webhook ingestion idempotency.
+  - test_dashboard_endpoint              : Validates KPI analytics JSON calculations.
+
+* tests/test_dedupe.py:
+  - test_exact_duplicate_detection       : Tests high-confidence duplicate pair detection.
+  - test_different_people_same_company_not_overflagged: Prevents false positive grouping.
+  - test_email_local_variation_match     : Verifies detection across email handle variations.
+
+* tests/test_source_extract.py:
+  - test_extract_event_booth_qr          : Tests trade show/booth attribution.
+  - test_extract_referral_with_name      : Verifies warm intro and referrer extraction.
+  - test_extract_organic_search          : Tests search engine attribution.
+  - test_extract_linkedin_engagement     : Tests social engagement channels.
+  - test_extract_manual_cold_call        : Tests outbound sales attribution.
+  - test_fallback_other                  : Tests fallback handling for generic notes.
+
+--------------------------------------------------------------------------------
+9. ENGINEERING HIGHLIGHTS & DESIGN DECISIONS
+--------------------------------------------------------------------------------
+
+* Messy Data Normalization:
+  Built an automated data-cleaning pipeline to process 2,049 rows of raw CRM exports, 
+  including handling missing or inconsistent names, normalizing phone numbers into 
+  standardized digit-based keys, mapping different status values into 7 canonical states, 
+  and parsing various date formats.
+
+* Scalable Two-Stage AI Deduplication:
+  Designed an efficient deduplication process using Inverted Index Blocking instead of 
+  brute-force pairwise comparison. This reduces computational complexity from O(N^2) to 
+  approximately O(N), allowing around 2,000 records to be scanned in under 0.5 seconds.
+
+* AI-Based Source Extraction (NLP):
+  Developed an NLP pipeline to extract structured marketing channels and source details 
+  from unstructured sales notes. The system uses LLaMA 3.3 70B via OpenRouter, with a 
+  local regex-based rule engine as a fallback to maintain reliability when the AI service 
+  is unavailable.
+
+* Production-Ready REST API & Dynamic Export:
+  Implemented a complete REST API with GET, PATCH, and POST /ingest endpoints, along with 
+  dynamic CSV exports based on user-defined filters. The API includes automatically 
+  generated OpenAPI/Swagger documentation for straightforward integration and testing.
+
+--------------------------------------------------------------------------------
+10. FUTURE ROADMAP (WHAT I'D DO NEXT)
+--------------------------------------------------------------------------------
+1. Semantic Vector Search for Deduplication:
+   Integrate local sentence embeddings (e.g., all-MiniLM-L6-v2) with a vector index 
+   (ChromaDB or Qdrant) to match non-standard corporate name variations and roles.
+
+2. Interactive 3-Way Merge Tool:
+   Build an interactive merge UI allowing sales reps to choose winning field values when 
+   consolidating conflicting duplicate records.
+
+3. Asynchronous Background Task Queue:
+   Offload bulk CSV processing and deduplication jobs to background workers using Celery 
+   or ARQ with Redis.
+
+4. Audit Trail & Field-Level Activity Log:
+   Track historical field-level mutations to maintain audit compliance and historical 
+   provenance across CRM record updates.
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================
