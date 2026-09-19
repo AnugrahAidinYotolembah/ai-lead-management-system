@@ -19,7 +19,25 @@ The system is designed to handle messy, real-world CRM data, including inconsist
 | **Assignment Status** | 100% Core & Bonus Requirements Completed                                                                 |
 
 ---
+🚀 Live Demo
 
+AI-Assisted Mini Lead Management System
+
+🔗 https://ai-lead-management-system.vercel.app/
+
+The live dashboard provides an interactive interface for exploring the CRM workflow, including:
+
+Lead management and exploration
+Search and filtering
+CRM dashboard and KPI visualization
+Lead updates
+Duplicate candidate detection
+AI-assisted source extraction
+CSV export
+
+Note: The live deployment may use a different environment configuration from the local development setup. For the complete API, database, and LLM configuration, follow the local setup instructions below.
+
+---
 ## 🛠️ Technology Stack & Architectural Decisions
 
 | Layer / Component        | Technology                                  | Rationale & Engineering Decision                                                                                                                   |
