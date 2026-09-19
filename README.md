@@ -19,7 +19,7 @@ The system is designed to handle messy, real-world CRM data, including inconsist
 | **Assignment Status** | 100% Core & Bonus Requirements Completed                                                                 |
 
 ---
-🚀 Live Demo
+## 🚀 Live Demo
 
 AI-Assisted Mini Lead Management System
 
